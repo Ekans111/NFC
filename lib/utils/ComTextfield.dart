@@ -35,7 +35,6 @@ class ComTextField extends StatelessWidget {
         child: TextField(
           controller: controller,
           decoration: InputDecoration(
-              filled: true,
               fillColor: Colors.white,
               border: const OutlineInputBorder(
                 borderSide: BorderSide(width: 1.0, color: Colors.black),
@@ -47,7 +46,7 @@ class ComTextField extends StatelessWidget {
               hintStyle:
                   TextStyle(color: Colors.black.withOpacity(0.3), fontSize: 16),
               contentPadding: EdgeInsets.fromLTRB(20, 0, 3, 0)),
-          style: TextStyle(fontSize: wordsize ?? 20),
+          style: TextStyle(fontSize: wordsize ?? 16),
           textAlign: TextAlign.left,
           onChanged: callback,
           maxLines: maxline,

@@ -6,12 +6,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:degime_131/screen/Landing_page.dart';
-// import 'package:degime_131/screen/Menu_page2.dart';
-// import 'package:degime_131/screen/Menu_page3.dart';
+import 'package:degime_131/utils/Global_variable.dart';
 
 class CreateFolder extends StatefulWidget {
   String folderName;
-  CreateFolder({super.key,required this.folderName});
+  CreateFolder({super.key, required this.folderName});
   static String tag = "/CreateFolder";
   @override
   State<CreateFolder> createState() => _CreateFolder();
@@ -20,10 +19,9 @@ class CreateFolder extends StatefulWidget {
 class Item {
   final String path;
   final String title;
-  final String subtitle;
   bool isSelected;
 
-  Item(this.path, this.title, this.subtitle, {this.isSelected = false});
+  Item(this.path, this.title, {this.isSelected = false});
 }
 
 class _CreateFolder extends State<CreateFolder> {
@@ -144,7 +142,7 @@ class _CreateFolder extends State<CreateFolder> {
 
 class SecondScreen extends StatefulWidget {
   String folderName;
-  SecondScreen({super.key,required this.folderName});
+  SecondScreen({super.key, required this.folderName});
   @override
   State<SecondScreen> createState() => _SecondScreen();
 }
@@ -161,39 +159,26 @@ class _SecondScreen extends State<SecondScreen> {
   @override
   void initState() {
     super.initState();
-    items = [
-      Item('assets/images/avatar1.png', 'Jane Cooper',
-          '(270)555-0117, 2019/11/20'),
-      Item('assets/images/avatar2.png', 'Jane Cooper',
-          '(270)555-0117, 2019/11/20'),
-      Item('assets/images/avatar3.png', 'Jane Cooper',
-          '(270)555-0117, 2019/1/20'),
-      Item('assets/images/avatar2.png', 'Jane Cooper',
-          '(270)555-0117, 2019/11/20'),
-      Item('assets/images/avatar1.png', 'Jane Cooper',
-          '(270)555-0117, 2019/11/20'),
-      Item('assets/images/avatar2.png', 'Jane Cooper',
-          '(270)555-0117, 2019/11/20'),
-      Item('assets/images/avatar3.png', 'Jane Cooper',
-          '(270)555-0117, 2019/1/20'),
-      Item('assets/images/avatar2.png', 'Jane Cooper',
-          '(270)555-0117, 2019/11/20'),
-      Item('assets/images/avatar1.png', 'Jane Cooper',
-          '(270)555-0117, 2019/11/20'),
-      Item('assets/images/avatar2.png', 'Jane Cooper',
-          '(270)555-0117, 2019/11/20'),
-      Item('assets/images/avatar3.png', 'Jane Cooper',
-          '(270)555-0117, 2019/1/20'),
-      Item('assets/images/avatar2.png', 'Jane Cooper',
-          '(270)555-0117, 2019/11/20'),
-    ];
+    GlobalVariables.getRoom();
+    items = [];
+    for (int i = 0; i < GlobalVariables.chatroom.length; i++) {
+      items.add(Item(
+          GlobalVariables.chatroom[i]["member"][1]["avatar"].toString(),
+          GlobalVariables.chatroom[i]["room_name"]));
+    }
     selectedIndexes = {};
     for (int i = 0; i < items.length; i++) {
-      _appBarImage.add((Image.asset(
-        items[i].path,
-        width: 50,
-        height: 50,
-      )));
+      _appBarImage.add((items[i].path.contains("http")
+                            ? Image.network(
+                                items[i].path,
+                                width: 50,
+                                height: 50,
+                              )
+                            : Image.asset(
+                                "assets/images/defaultavatar.png",
+                                width: 50,
+                                height: 50,
+                              )));
     }
   }
 
@@ -257,18 +242,23 @@ class _SecondScreen extends State<SecondScreen> {
                   leading: ClipRRect(
                       borderRadius: BorderRadius.circular(70),
                       child: Container(
-                        decoration: BoxDecoration(boxShadow: [
-                          BoxShadow(
-                              color: Colors.grey.shade500,
-                              offset: const Offset(0, 2),
-                              blurRadius: 3)
-                        ]),
-                        child: Image.asset(
-                          item.path,
-                          width: 50,
-                          height: 50,
-                        ),
-                      )),
+                          decoration: BoxDecoration(boxShadow: [
+                            BoxShadow(
+                                color: Colors.grey.shade500,
+                                offset: const Offset(0, 2),
+                                blurRadius: 3)
+                          ]),
+                          child: item.path.contains("http")
+                              ? Image.network(
+                                  item.path,
+                                  width: 50,
+                                  height: 50,
+                                )
+                              : Image.asset(
+                                  "assets/images/defaultavatar.png",
+                                  width: 50,
+                                  height: 50,
+                                ))),
                   trailing: isSelectionMode
                       ? Checkbox(
                           value: selectedIndexes.contains(index),
@@ -281,7 +271,6 @@ class _SecondScreen extends State<SecondScreen> {
                         )
                       : null,
                   title: Text(item.title),
-                  subtitle: Text(item.subtitle),
                   onTap: () {
                     if (isSelectionMode) {
                       setState(() {

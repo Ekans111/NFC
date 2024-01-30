@@ -1,4 +1,5 @@
 import 'package:degime_131/main.dart';
+import 'package:degime_131/screen/BCardManage_page2.dart';
 import 'package:degime_131/screen/ChatApply_page.dart';
 import 'package:degime_131/screen/DataManage_page.dart';
 import 'package:degime_131/screen/Landing_next.dart';
@@ -12,6 +13,8 @@ import 'package:degime_131/screen/Login_page.dart';
 import 'package:degime_131/screen/Theme_select.dart';
 import 'package:flutter/services.dart';
 import 'package:degime_131/utils/Global_variable.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
@@ -185,29 +188,30 @@ class _LandingPage extends State<LandingPage> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                        const Text(
-                          "はるこ",
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        10.height,
-                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Text(
-                              "https://degime.net/haruko",
+                              "はるこ",
                               style: TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold),
                             ),
-                            IconButton(
-                                onPressed: () {
-                                  print('object');
-                                },
-                                icon: Icon(Icons.copy)),
-                          ],
-                        )
-                      ])
+                            10.height,
+                            Row(
+                              children: [
+                                const Text(
+                                  "https://degime.net/haruko",
+                                  style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                IconButton(
+                                    onPressed: () {
+                                      print('object');
+                                    },
+                                    icon: Icon(Icons.copy)),
+                              ],
+                            )
+                          ])
                     ],
                   ),
                   20.height,
@@ -590,7 +594,7 @@ class _LandingPage extends State<LandingPage> {
                           )),
                     )
                   ]),
-                  50.height
+                  70.height
                 ]),
           ),
         ),
@@ -817,7 +821,14 @@ class _LandingPage extends State<LandingPage> {
                           child: Stack(
                             children: [
                               OutlinedButton(
-                                  onPressed: () {},
+                                  onPressed: () async {
+                                    await GlobalVariables.getMember();
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (BuildContext context) =>
+                                                BCardManagePage2()));
+                                  },
                                   style: OutlinedButton.styleFrom(
                                     padding: const EdgeInsets.all(0),
                                     backgroundColor: _isPressed7

@@ -28,6 +28,7 @@ import 'package:camera/camera.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:http/http.dart' as http;
+import 'package:nfc_manager/nfc_manager.dart';
 
 class SNSCard extends StatefulWidget {
   File? imagefile;
@@ -45,21 +46,22 @@ class _SNSCard extends State<SNSCard> {
   int orderindex = -1;
   Color _color = Color(0xFF96DA45);
   double _width = 140;
+  TextEditingController degimecontroller =
+      TextEditingController(text: "https://degime.net/");
   PageController _pageController = PageController(initialPage: 0);
   PageController _pageController1 =
       PageController(initialPage: 0, viewportFraction: 0.9);
   double currentIndexPage = 0;
   final ImagePicker picker = ImagePicker();
   bool cancelclick = false;
-  List<String> imageFiles = List.filled(19, "1");
-  List<String> imageUrls = List.filled(19, "");
+  List<String> imageFiles = List.filled(21, "1");
   List<TextEditingController> _controllers =
-      List.generate(42, (index) => TextEditingController());
+      List.generate(43, (index) => TextEditingController());
   List<Widget> widgetList1 = [];
   late Color selectedColor = Colors.black;
   Color cardcolor = Colors.white;
   Color imagecolor = Colors.white;
-  List<String> _textValues = List<String>.filled(42, "");
+  List<String> _textValues = List<String>.filled(43, "");
   late VideoPlayerController _controller;
   late Future<void> _initializeVideoPlayerFuture;
   String mapurl = 'https://maps.google.com/maps?q=37.7749,-122.4194';
@@ -80,8 +82,7 @@ class _SNSCard extends State<SNSCard> {
   String videoUrl = '';
   String pdfUrl = '';
   var info = [];
-
-  var idCard = [];
+  bool _isNfcAvailable = false;
   var dataLink = [];
   var imageLink1 = [];
   var imageLink2 = [];
@@ -95,15 +96,15 @@ class _SNSCard extends State<SNSCard> {
   var spaceAdd = [];
 
   Future<void> publicCard() async {
-    var uri = Uri.parse('http://194.87.199.12:5000//social/private/snstree');
+    var uri = Uri.parse('http://194.87.199.12:5000/social/private/snstree');
     var data = {
-      'bgColor': imagecolor,
-      'bgURL': imageUrls[17],
-      'url_name': _controllers[39].text,
-      'faceImg': imageUrls[0],
+      'bgColor': imagecolor.toString(),
+      'bgURL': GlobalVariables.imageUrls1[17],
+      'url_name': degimecontroller.text.splitAfter('net/'),
+      'faceImg': GlobalVariables.imageUrls1[0],
       'accountName': _controllers[41].text,
       'profile': _controllers[42].text,
-      'idCard': {'idCard': idCard},
+      'idCard': {'idCard': GlobalVariables.idCard1},
       'snsTree_Data': {
         'dataLink': dataLink,
         'imgLink1': imageLink1,
@@ -127,6 +128,26 @@ class _SNSCard extends State<SNSCard> {
         body: requestbody);
     //print(GlobalVariables.token);
     print(json.decode(response.body));
+  }
+
+  Future<void> _checkNfcAvailability() async {
+    bool isAvailable = await NfcManager.instance.isAvailable();
+    setState(() {
+      _isNfcAvailable = isAvailable;
+    });
+  }
+
+  Future<void> _writeToNfc(String nickname) async {
+    String url = nickname;
+    NdefRecord record = NdefRecord.createUri(Uri.parse(url));
+    NdefMessage message = NdefMessage([record]);
+    NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
+      Ndef? ndef = Ndef.from(tag);
+      if (ndef != null) {
+        await ndef.write(message);
+        await NfcManager.instance.stopSession();
+      }
+    });
   }
 
   @override
@@ -157,9 +178,9 @@ class _SNSCard extends State<SNSCard> {
                 Container(
                   width: 70,
                   height: 70,
-                  child: imageFiles[2].contains('png')
-                      ? Image.asset(imageFiles[2])
-                      : Image.file(File(imageFiles[2])),
+                  child: Image.network(
+                    GlobalVariables.imageUrls1[2]
+                  )
                 ),
                 Column(
                   children: [
@@ -308,33 +329,6 @@ class _SNSCard extends State<SNSCard> {
     });
   }
 
-  Future<void> uploadToCloudinary(String pathimage, int index) async {
-    final cloudName = 'dz6r3o4w0'; // Replace with your Cloudinary cloud name
-    final unsignedUploadPreset =
-        'dfuqz9xv'; // Replace with your upload preset name
-    final file = File(pathimage); // Replace with the actual path to your image
-
-    final url = Uri.parse('https://api.cloudinary.com/v1_1/dz6r3o4w0/upload');
-    final request = http.MultipartRequest('POST', url)
-      ..fields['upload_preset'] = unsignedUploadPreset
-      ..files.add(await http.MultipartFile.fromPath('file', file.path));
-
-    final response = await request.send();
-
-    if (response.statusCode == 200) {
-      final responseData = await response.stream.toBytes();
-      final responseString = String.fromCharCodes(responseData);
-      final jsonMap = jsonDecode(responseString);
-      setState(() {
-        final url = jsonMap['url'];
-        if (index == "100") videoUrl = url;
-        if (index == "200") pdfUrl = url;
-        imageUrls[index] = url;
-        print(imageUrls[index]);
-      });
-    }
-  }
-
   Future<void> pickImage(BuildContext context, int imageIndex) async {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
@@ -344,8 +338,7 @@ class _SNSCard extends State<SNSCard> {
         if (imageIndex == 1)
           GlobalVariables.mainImage2.add(File(imageFiles[imageIndex]));
       });
-      await uploadToCloudinary(pickedFile.path, imageIndex);
-      if (imageIndex == 1) idCard.add(imageUrls[imageIndex]);
+      await GlobalVariables.uploadToCloudinary(pickedFile.path, imageIndex, 2);
     }
   }
 
@@ -359,7 +352,7 @@ class _SNSCard extends State<SNSCard> {
       final bytes = file.readAsBytesSync();
       video = base64Encode(bytes);
       _initializeVideoPlayerFuture = _controller.initialize();
-      await uploadToCloudinary(file.path, 100);
+      await GlobalVariables.uploadToCloudinary(file.path, 19, 2);
       setState(() {});
     }
   }
@@ -447,7 +440,7 @@ class _SNSCard extends State<SNSCard> {
                   widgetList1.add(AddLink());
                   Navigator.of(context).pop();
                   info.add({
-                    'imgLink': '',
+                    'imgLink': GlobalVariables.imageUrls1[2] == "" ? '/image/${_controllers[0].text.toLowerCase()}.png' : GlobalVariables.imageUrls1[2],
                     'title': _controllers[0].text,
                     'content': _controllers[1].text,
                     'link': _controllers[2].text,
@@ -632,7 +625,7 @@ class _SNSCard extends State<SNSCard> {
       setState(() {
         _pdfFile = File(result.files.single.path!);
       });
-      await uploadToCloudinary(_pdfFile!.path, 200);
+      await GlobalVariables.uploadToCloudinary(_pdfFile!.path, 20, 2);
     }
   }
 
@@ -1413,7 +1406,7 @@ class _SNSCard extends State<SNSCard> {
                     'title': _controllers[3].text,
                     'text': _controllers[4].text,
                     'url': _controllers[5].text == ''
-                        ? imageUrls[3]
+                        ? GlobalVariables.imageUrls1[3]
                         : _controllers[5].text,
                     'order': orderindex,
                     'size': 1,
@@ -1464,10 +1457,10 @@ class _SNSCard extends State<SNSCard> {
                 info.add({
                   'title1': _controllers[6].text,
                   'text1': _controllers[7].text,
-                  'url1': imageUrls[4],
+                  'url1': GlobalVariables.imageUrls1[4],
                   'title2': _controllers[9].text,
                   'text2': _controllers[10].text,
-                  'url2': imageUrls[5],
+                  'url2': GlobalVariables.imageUrls1[5],
                   'order': orderindex,
                   'size': 2,
                   'startTime': GlobalVariables.reservationStart,
@@ -1503,13 +1496,13 @@ class _SNSCard extends State<SNSCard> {
                 info.add({
                   'title1': _controllers[12].text,
                   'text1': _controllers[13].text,
-                  'url1': imageUrls[6],
+                  'url1': GlobalVariables.imageUrls1[6],
                   'title2': _controllers[15].text,
                   'text2': _controllers[16].text,
-                  'url2': imageUrls[7],
+                  'url2': GlobalVariables.imageUrls1[7],
                   'title3': _controllers[18].text,
                   'text3': _controllers[19].text,
-                  'url3': imageUrls[8],
+                  'url3': GlobalVariables.imageUrls1[8],
                   'order': orderindex,
                   'size': 3,
                   'startTime': GlobalVariables.reservationStart,
@@ -1546,16 +1539,16 @@ class _SNSCard extends State<SNSCard> {
                 info.add({
                   'title1': _controllers[21].text,
                   'text1': _controllers[22].text,
-                  'url1': imageUrls[9],
+                  'url1': GlobalVariables.imageUrls1[9],
                   'title2': _controllers[24].text,
                   'text2': _controllers[25].text,
-                  'url2': imageUrls[10],
+                  'url2': GlobalVariables.imageUrls1[10],
                   'title3': _controllers[27].text,
                   'text3': _controllers[28].text,
-                  'url3': imageUrls[11],
+                  'url3': GlobalVariables.imageUrls1[11],
                   'title4': _controllers[30].text,
                   'text4': _controllers[31].text,
-                  'url4': imageUrls[12],
+                  'url4': GlobalVariables.imageUrls1[12],
                   'order': orderindex,
                   'size': 4,
                   'startTime': GlobalVariables.reservationStart,
@@ -1746,6 +1739,7 @@ class _SNSCard extends State<SNSCard> {
   }
 
   void _showDegime(BuildContext context) {
+    degimecontroller.text = "https://degime.net/";
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -1793,9 +1787,10 @@ class _SNSCard extends State<SNSCard> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               ComTextField(
-                                  controller: _controllers[39],
+                                  controller: degimecontroller,
                                   textheight: 35,
                                   textwidth: 250,
+                                  maxline: 1,
                                   suffix: IconButton(
                                       onPressed: () {}, icon: Icon(Icons.copy)),
                                   callback: (text) => _addTextValue(text, 39),
@@ -1857,7 +1852,7 @@ class _SNSCard extends State<SNSCard> {
                                     }
                                   }
                                   await publicCard();
-                                  idCard = [];
+
                                   imageLink1 = [];
                                   imageLink2 = [];
                                   imageLink3 = [];
@@ -1867,7 +1862,11 @@ class _SNSCard extends State<SNSCard> {
                                   mapLink = [];
                                   profileLink = [];
                                   pdfLink = [];
-
+                                  _checkNfcAvailability();
+                                  _isNfcAvailable
+                                      ? _writeToNfc(degimecontroller.text)
+                                      : Fluttertoast.showToast(
+                                          msg: "NFC is not connected.");
                                   Navigator.of(context).pop();
                                 },
                               )),
@@ -2617,6 +2616,7 @@ class _CameraScreenState extends State<CameraScreen> {
       setState(() {
         _imageFile = file;
         GlobalVariables.mainImage2.add(file);
+        GlobalVariables.uploadToCloudinary(file.path, 1, 2);
       });
     } catch (e) {
       print(e);

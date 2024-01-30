@@ -28,6 +28,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:degime_131/main.dart';
 import 'package:degime_131/utils/Global_variable.dart';
 import 'package:google_ml_kit/google_ml_kit.dart';
+import 'package:nfc_manager/nfc_manager.dart';
 
 class CardTextField extends StatelessWidget {
   final String index;
@@ -84,6 +85,7 @@ class OnlineCard extends StatefulWidget {
 }
 
 class _OnlineCard extends State<OnlineCard> {
+  bool _isNfcAvailable = false;
   int currentpage = 0;
   Color _color = Color(0xFF96DA45);
   double _width = 140;
@@ -99,10 +101,12 @@ class _OnlineCard extends State<OnlineCard> {
   double currentIndexPage = 0;
   final ImagePicker picker = ImagePicker();
   bool cancelclick = false;
-  List<String> imageFiles = List.filled(201, "1");
-  List<String> imageUrls = List.filled(201, "");
+  List<String> imageFiles = List.filled(21, "1");
+  // List<String> imageUrls = List.filled(21, "");
   List<TextEditingController> _controllers =
-      List.generate(57, (index) => TextEditingController()); //after 39
+      List.generate(57, (index) => TextEditingController(text: "")); //after 39
+  TextEditingController degimecontroller =
+      TextEditingController(text: "https://degime.net/");
   List<Widget> widgetList1 = [];
   late Color selectedColor = Colors.black;
   Color cardcolor = Colors.white;
@@ -128,8 +132,6 @@ class _OnlineCard extends State<OnlineCard> {
   String videoUrl = '';
   String pdfUrl = '';
   var info = [];
-
-  var idCard = [];
   var imageLink1 = [];
   var imageLink2 = [];
   var imageLink3 = [];
@@ -144,13 +146,13 @@ class _OnlineCard extends State<OnlineCard> {
   Future<void> publicCard() async {
     var uri = Uri.parse('http://194.87.199.12:5000/social/private/online');
     var data = {
-      'bgColor': imagecolor,
-      'bgURL': imageUrls[17],
-      'cardColor': cardcolor,
-      'cardURL': imageUrls[18],
-      'wordColor': selectedColor,
-      'url_name': _controllers[54].text,
-      'faceImg': imageUrls[0],
+      'bgColor': imagecolor.toString(),
+      'bgURL': GlobalVariables.imageUrls[17],
+      'cardColor': cardcolor.toString(),
+      'cardURL': GlobalVariables.imageUrls[18],
+      'wordColor': selectedColor.toString(),
+      'url_name': degimecontroller.text.splitAfter('net/'),
+      'faceImg': GlobalVariables.imageUrls[0],
       'realName': _controllers[39].text,
       'company_url': _controllers[53].text,
       'companyName': _controllers[2].text,
@@ -160,28 +162,36 @@ class _OnlineCard extends State<OnlineCard> {
       'mailAddress': _controllers[43].text,
       'address': _controllers[44].text,
       'idCard': {
-        'idCard': idCard,
+        'idCard': GlobalVariables.idCard,
       },
       'socialLink': {
         'socialLink': [
           {
             'title': _controllers[45].text,
-            "icon_link": imageUrls[13],
+            "icon_link": GlobalVariables.imageUrls[13] == ""
+                ? '/image/${_controllers[45].text.toLowerCase()}.png'
+                : GlobalVariables.imageUrls1[13],
             "social_link": _controllers[49].text
           },
           {
             'title': _controllers[46].text,
-            "icon_link": imageUrls[14],
+            "icon_link": GlobalVariables.imageUrls[14] == ""
+                ? '/image/${_controllers[46].text.toLowerCase()}.png'
+                : GlobalVariables.imageUrls1[14],
             "social_link": _controllers[50].text
           },
           {
             'title': _controllers[47].text,
-            "icon_link": imageUrls[15],
+            "icon_link": GlobalVariables.imageUrls[15] == ""
+                ? '/image/${_controllers[47].text.toLowerCase()}.png'
+                : GlobalVariables.imageUrls1[15],
             "social_link": _controllers[51].text
           },
           {
             'title': _controllers[48].text,
-            "icon_link": imageUrls[16],
+            "icon_link": GlobalVariables.imageUrls[16] == ""
+                ? '/image/${_controllers[48].text.toLowerCase()}.png'
+                : GlobalVariables.imageUrls1[16],
             "social_link": _controllers[52].text
           },
         ]
@@ -260,9 +270,29 @@ class _OnlineCard extends State<OnlineCard> {
       final bytes = file.readAsBytesSync();
       video = base64Encode(bytes);
       _initializeVideoPlayerFuture = _controller.initialize();
-      await uploadToCloudinary(file.path, 100);
+      await GlobalVariables.uploadToCloudinary(file.path, 19, 1);
       setState(() {});
     }
+  }
+
+  Future<void> _checkNfcAvailability() async {
+    bool isAvailable = await NfcManager.instance.isAvailable();
+    setState(() {
+      _isNfcAvailable = isAvailable;
+    });
+  }
+
+  Future<void> _writeToNfc(String nickname) async {
+    String url = nickname;
+    NdefRecord record = NdefRecord.createUri(Uri.parse(url));
+    NdefMessage message = NdefMessage([record]);
+    NfcManager.instance.startSession(onDiscovered: (NfcTag tag) async {
+      Ndef? ndef = Ndef.from(tag);
+      if (ndef != null) {
+        await ndef.write(message);
+        await NfcManager.instance.stopSession();
+      }
+    });
   }
 
   @override
@@ -272,7 +302,7 @@ class _OnlineCard extends State<OnlineCard> {
       'https://flutter.github.io/assets-for-api-docs/assets/videos/butterfly.mp4',
     );
     _initializeVideoPlayerFuture = _controller.initialize();
-    mapurl = 'https://maps.google.com/maps?q=37.7749,-122.4194';
+    _checkNfcAvailability();
   }
 
   @override
@@ -418,35 +448,6 @@ class _OnlineCard extends State<OnlineCard> {
     });
   }
 
-  Future<void> uploadToCloudinary(String pathimage, int index) async {
-    final cloudName = 'dz6r3o4w0'; // Replace with your Cloudinary cloud name
-    final unsignedUploadPreset =
-        'dfuqz9xv'; // Replace with your upload preset name
-    final file = File(pathimage); // Replace with the actual path to your image
-
-    final url = Uri.parse('https://api.cloudinary.com/v1_1/dz6r3o4w0/upload');
-    final request = http.MultipartRequest('POST', url)
-      ..fields['upload_preset'] = unsignedUploadPreset
-      ..files.add(await http.MultipartFile.fromPath('file', file.path));
-
-    final response = await request.send();
-
-    if (response.statusCode == 200) {
-      final responseData = await response.stream.toBytes();
-      final responseString = String.fromCharCodes(responseData);
-      final jsonMap = jsonDecode(responseString);
-      setState(() {
-        final url = jsonMap['url'];
-        if (index == "100")
-          videoUrl = url;
-        else if (index == "200")
-          pdfUrl = url;
-        else
-          imageUrls[index] = url;
-      });
-    }
-  }
-
   Future<void> pickImage(BuildContext context, int imageIndex) async {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
@@ -465,8 +466,7 @@ class _OnlineCard extends State<OnlineCard> {
         // encoded = base64Encode(bytes);
         // print(_ocrtext);
       });
-      await uploadToCloudinary(pickedFile.path, imageIndex);
-      if (imageIndex == 1) idCard.add(imageUrls[imageIndex]);
+      await GlobalVariables.uploadToCloudinary(pickedFile.path, imageIndex, 1);
     }
   }
 
@@ -624,6 +624,7 @@ class _OnlineCard extends State<OnlineCard> {
   }
 
   void _showDegime(BuildContext context) {
+    degimecontroller.text = "https://degime.net/";
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -671,9 +672,12 @@ class _OnlineCard extends State<OnlineCard> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             ComTextField(
-                                controller: _controllers[54],
+                                controller: degimecontroller,
                                 textheight: 25,
+                                maxline: 1,
                                 textwidth: 250,
+                                suffix: IconButton(
+                                    onPressed: () {}, icon: Icon(Icons.copy)),
                                 callback: (text) => _addTextValue(text, 54),
                                 hinttext: 'https://degime.net/gopty'),
                           ],
@@ -696,6 +700,10 @@ class _OnlineCard extends State<OnlineCard> {
                               string: 'すぐ購入する',
                               color: Color(0xFFB6B6B9),
                               onPressed: () async {
+                                for (int i = 0;
+                                    i < GlobalVariables.mainImage.length;
+                                    i++) {}
+                                print(degimecontroller.text.splitAfter('net/'));
                                 for (int i = 0; i < info.length; i++) {
                                   info[i]['order'] = i;
                                   if (info[i]['size'] == 1) {
@@ -730,7 +738,7 @@ class _OnlineCard extends State<OnlineCard> {
                                   }
                                 }
                                 await publicCard();
-                                idCard = [];
+
                                 imageLink1 = [];
                                 imageLink2 = [];
                                 imageLink3 = [];
@@ -740,7 +748,11 @@ class _OnlineCard extends State<OnlineCard> {
                                 mapLink = [];
                                 profileLink = [];
                                 pdfLink = [];
-
+                                _checkNfcAvailability();
+                                _isNfcAvailable
+                                    ? _writeToNfc(degimecontroller.text)
+                                    : Fluttertoast.showToast(
+                                        msg: "NFC is not connected.");
                                 Navigator.of(context).pop();
                               },
                             )),
@@ -906,7 +918,7 @@ class _OnlineCard extends State<OnlineCard> {
       setState(() {
         _pdfFile = File(result.files.single.path!);
       });
-      await uploadToCloudinary(_pdfFile!.path, 200);
+      await GlobalVariables.uploadToCloudinary(_pdfFile!.path, 20, 1);
     }
   }
 
@@ -1111,7 +1123,7 @@ class _OnlineCard extends State<OnlineCard> {
                         textwidth: MediaQuery.of(context).size.width * 0.7,
                         callback: (text) => _addTextValue(text, index),
                         hinttext: url),
-                        5.height,
+                    5.height,
                     index == 35
                         ? ComTextField(
                             controller: _controllers[55],
@@ -1120,7 +1132,7 @@ class _OnlineCard extends State<OnlineCard> {
                             callback: (text) => _addTextValue(text, 55),
                             hinttext: 'タイトル')
                         : 5.height,
-                        5.height,
+                    5.height,
                     index == 35
                         ? ComTextField(
                             controller: _controllers[56],
@@ -1200,7 +1212,7 @@ class _OnlineCard extends State<OnlineCard> {
                           Navigator.of(context).pop();
                           widgetList1.add(PdfScreen(_pdfFile!));
                           info.add({
-                            'url': pdfUrl,
+                            'url': GlobalVariables.imageUrls[20],
                             'title': _controllers[55],
                             'text': _controllers[56],
                             'order': orderindex,
@@ -1213,7 +1225,7 @@ class _OnlineCard extends State<OnlineCard> {
                           Navigator.of(context).pop();
                           widgetList1.add(VideoScreen(_controller));
                           info.add({
-                            'url': videoUrl,
+                            'url': GlobalVariables.imageUrls[19],
                             'order': orderindex,
                             'size': 5,
                             'startTime': GlobalVariables.reservationStart,
@@ -1730,7 +1742,7 @@ class _OnlineCard extends State<OnlineCard> {
                     'title': _controllers[3].text,
                     'text': _controllers[4].text,
                     'url': _controllers[5].text == ''
-                        ? imageUrls[3]
+                        ? GlobalVariables.imageUrls[3]
                         : _controllers[5].text,
                     'order': orderindex,
                     'size': 1,
@@ -1781,10 +1793,10 @@ class _OnlineCard extends State<OnlineCard> {
                 info.add({
                   'title1': _controllers[6].text,
                   'text1': _controllers[7].text,
-                  'url1': imageUrls[4],
+                  'url1': GlobalVariables.imageUrls[4],
                   'title2': _controllers[9].text,
                   'text2': _controllers[10].text,
-                  'url2': imageUrls[5],
+                  'url2': GlobalVariables.imageUrls[5],
                   'order': orderindex,
                   'size': 2,
                   'startTime': GlobalVariables.reservationStart,
@@ -1820,13 +1832,13 @@ class _OnlineCard extends State<OnlineCard> {
                 info.add({
                   'title1': _controllers[12].text,
                   'text1': _controllers[13].text,
-                  'url1': imageUrls[6],
+                  'url1': GlobalVariables.imageUrls[6],
                   'title2': _controllers[15].text,
                   'text2': _controllers[16].text,
-                  'url2': imageUrls[7],
+                  'url2': GlobalVariables.imageUrls[7],
                   'title3': _controllers[18].text,
                   'text3': _controllers[19].text,
-                  'url3': imageUrls[8],
+                  'url3': GlobalVariables.imageUrls[8],
                   'order': orderindex,
                   'size': 3,
                   'startTime': GlobalVariables.reservationStart,
@@ -1863,16 +1875,16 @@ class _OnlineCard extends State<OnlineCard> {
                 info.add({
                   'title1': _controllers[21].text,
                   'text1': _controllers[22].text,
-                  'url1': imageUrls[9],
+                  'url1': GlobalVariables.imageUrls[9],
                   'title2': _controllers[24].text,
                   'text2': _controllers[25].text,
-                  'url2': imageUrls[10],
+                  'url2': GlobalVariables.imageUrls[10],
                   'title3': _controllers[27].text,
                   'text3': _controllers[28].text,
-                  'url3': imageUrls[11],
+                  'url3': GlobalVariables.imageUrls[11],
                   'title4': _controllers[30].text,
                   'text4': _controllers[31].text,
-                  'url4': imageUrls[12],
+                  'url4': GlobalVariables.imageUrls[12],
                   'order': orderindex,
                   'size': 4,
                   'startTime': GlobalVariables.reservationStart,
@@ -2269,6 +2281,7 @@ class _OnlineCard extends State<OnlineCard> {
                                 width: screenWidth * 0.8,
                                 height: screenHeight * 0.3,
                                 decoration: BoxDecoration(
+                                    color: Colors.white,
                                     borderRadius: BorderRadius.circular(10.0),
                                     border: Border.all(
                                         color: const Color(0xFF2A08F8),
@@ -2469,6 +2482,7 @@ class _OnlineCard extends State<OnlineCard> {
                                   textwidth: 185,
                                   callback: (text) {},
                                   hinttext: '氏名',
+                                  maxline: 1,
                                   controller: _controllers[39],
                                 ),
                               ]),
@@ -2967,6 +2981,7 @@ class _CameraScreenState extends State<CameraScreen> {
       setState(() {
         _imageFile = file;
         GlobalVariables.mainImage.add(file);
+        GlobalVariables.uploadToCloudinary(file.path, 1, 1);
         _recognizeText(file, widget.str1!, widget.str2!, widget.str3!,
             widget.str4!, widget.str5!);
       });

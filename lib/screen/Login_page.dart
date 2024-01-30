@@ -130,6 +130,7 @@ class _LoginPage extends State<LoginPage> {
       // Example: SharedPreferences.getInstance().then((prefs) => prefs.setString('token', token));
       token = json.decode(response.body)['token'];
       GlobalVariables.token = token;
+      GlobalVariables.username = json.decode(response.body)['username'];
     } else {
       // Authentication failed
       throw Exception('Failed to login');
